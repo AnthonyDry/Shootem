@@ -1,0 +1,31 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+@section scripts{
+    <script src="~/Scripts/game/requet-animation-frame.js"></script>
+    <script src="~/Scripts/game/quad-tree.js"></script>
+    <script src="~/Scripts/game/loader.js"></script>
+    <script src="~/Scripts/game/player.js"></script>
+    <script src="~/Scripts/game/shootem.js"></script>
+    <script>
+        var w = (window.innerWidth > 0) ? window.innerWidth : screen.width;
+        var h = (window.innerHeight > 0) ? window.innerHeight : screen.height;
+        var signalR = $.connection.gameHub;
+        var quad = new QuadTree(0, new Rectangle(0, 0, w, h));
+        var game = new GameController(w, h, signalR);
+
+    </script>
+}
+<div class="loading-screen screen">
+
+</div>
+<div class="start-screen screen">
+
+</div>
+<div class="game-screen screen">
+    <canvas id="gameBoard">
+        
+    </canvas>
+</div>
+
