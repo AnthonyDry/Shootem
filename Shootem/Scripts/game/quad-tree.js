@@ -1,24 +1,12 @@
-﻿function Rectangle(x, y, width, height) {
-    var _x = x;
-    var _y = y;
-    var _width = width;
-    var _height = height;
-
-    this.getX = function () {
-        return _x;
-    };
-
-    this.getY = function () {
-        return _y;
-    };
-
-    this.getWidth = function () {
-        return _width;
-    };
-
-    this.getHeight = function () {
-        return _height;
-    };
+﻿//
+// Rectangle of an object
+// Contains x and y, width and height of object
+//
+function Rectangle(x, y, width, height) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
 }
 
 function QuadTree(level, bounds) {
@@ -31,26 +19,37 @@ function QuadTree(level, bounds) {
     this._bounds = bounds;    
 }
 
+//
+// Clear the QuadTree
+//
 QuadTree.prototype.clear = function () {
+    var i = 0;
+    var l = this.nodes.length;
     this.objects = [];
-    for (var i = 0; i < this.nodes.length; i++) {
-        if (this.nodes[i] != null) {
-            this.nodes[i] = [];
-            this.nodes[i] = null;
+    for (var i; i < l; i++) {
+        if (typeof this.nodes[i] !== 'undefined') {
+            this.nodes[i].clear();
+            delete this.nodes[i];
         }
     }
 };
 
+//
+// Split the QuadTree
+//
 QuadTree.prototype.split = function () {
-    var subWidth = parseInt(bounds.getWidth() / 2);
-    var subHeight = parseInt(bounds.getHeight() / 2);
-    var x = parseInt(bounds.getX());
-    var y = parseInt(bounds.getY());
+    var subWidth = Math.round(this.bounds.width / 2);
+    var subHeight = Math.round(this.bounds.height / 2);
+    
+    var x = Math.round(this.bounds.x);
+    var y = Math.round(this.bounds.y);
+
+    var nextLevel = this.level + 1;
  
-    this.nodes[0] = new Quadtree(level+1, new Rectangle(x + subWidth, y, subWidth, subHeight));
-    this.nodes[1] = new Quadtree(level+1, new Rectangle(x, y, subWidth, subHeight));
-    this.nodes[2] = new Quadtree(level+1, new Rectangle(x, y + subHeight, subWidth, subHeight));
-    nodes[3] = new Quadtree(level+1, new Rectangle(x + subWidth, y + subHeight, subWidth, subHeight));
+    this.nodes[0] = new Quadtree(nextLevel, new Rectangle(x + subWidth, y, subWidth, subHeight));
+    this.nodes[1] = new Quadtree(nextLevel, new Rectangle(x, y, subWidth, subHeight));
+    this.nodes[2] = new Quadtree(nextLevel, new Rectangle(x, y + subHeight, subWidth, subHeight));
+    this.nodes[3] = new Quadtree(nextLevel, new Rectangle(x + subWidth, y + subHeight, subWidth, subHeight));
 };
 
 /*
@@ -60,16 +59,16 @@ QuadTree.prototype.split = function () {
  */
 QuadTree.prototype.getIndex = function (rect) {
     var index = -1;
-    var verticalMidpoint = bounds.getX() + (bounds.getWidth() / 2);
-    var horizontalMidpoint = bounds.getY() + (bounds.getHeight() / 2);
+    var verticalMidpoint = this.bounds.x + (this.bounds.width / 2);
+    var horizontalMidpoint = this.bounds.y + (this.bounds.height / 2);
 
     // Object can completely fit within the top quadrants
-    var topQuadrant = (rect.getY() < horizontalMidpoint && rect.getY() + rect.getHeight() < horizontalMidpoint);
+    var topQuadrant = (rect.x < horizontalMidpoint && rect.y + rect.height < horizontalMidpoint);
     // Object can completely fit within the bottom quadrants
-    var bottomQuadrant = (rect.getY() > horizontalMidpoint);
+    var bottomQuadrant = (rect.y > horizontalMidpoint);
 
     // Object can completely fit within the left quadrants
-    if (rect.getX() < verticalMidpoint && rect.getX() + rect.getWidth() < verticalMidpoint) {
+    if (rect.x < verticalMidpoint && rect.x + rect.width < verticalMidpoint) {
         if (topQuadrant) {
             index = 1;
         }
@@ -78,7 +77,7 @@ QuadTree.prototype.getIndex = function (rect) {
         }
     }
     // Object can completely fit within the right quadrants
-    else if (rect.getX() > verticalMidpoint) {
+    else if (rect.x > verticalMidpoint) {
         if (topQuadrant) {
             index = 0;
         }
@@ -96,12 +95,12 @@ QuadTree.prototype.getIndex = function (rect) {
  * objects to their corresponding nodes.
  */
 QuadTree.prototype.insert = function (rect) {
-    if (this.nodes[0] != null) {
-        var index = getIndex(rect);
+    //if we have subnodes ...
+    if (typeof this.nodes[0] !== 'undefined') {
+        index = this.getIndex(rect);
 
-        if (index != -1) {
+        if (index !== -1) {
             this.nodes[index].insert(rect);
-
             return;
         }
     }
@@ -109,33 +108,45 @@ QuadTree.prototype.insert = function (rect) {
     this.objects.push(rect);
 
     if (this.objects.length > this.MAX_OBJECTS && this.level < this.MAX_LEVELS) {
-        if (this.nodes[0] == null) {
+        //split if we don't already have subnodes
+        if (typeof this.nodes[0] === 'undefined') {
             this.split();
         }
 
         var i = 0;
+        var index;
         while (i < this.objects.length) {
-            var index = getIndex(this.objects[i]);
-            if (index != -1) {
-                this.nodes[index].insert(this.objects.splice(i, 1));
+            index = getIndex(this.objects[i]);
+            if (index !== -1) {
+                this.nodes[index].insert(this.objects.splice(i, 1)[0]);
             }
             else {
                 i++;
             }
         }
     }
-}
+};
 
 /*
  * Return all objects that could collide with the given object
  */
-QuadTree.prototype.retrieve = function(returnObjects, rect) {
-   var index = this.getIndex(rect);
-if (index != -1 && nodes[0] != null) {
-    nodes[index].retrieve(returnObjects, pRect);
-}
- 
-returnObjects = returnObjects.concat(this.objects);
- 
-return returnObjects;
-}
+QuadTree.prototype.retrieve = function (rect) {
+    var index = this.getIndex(rect);
+    var returnObjects = this.objects;
+    //if we have subnodes ...
+    if (typeof this.nodes[0] !== 'undefined') {
+
+        //if pRect fits into a subnode ..
+        if (index !== -1) {
+            returnObjects = returnObjects.concat(this.nodes[index].retrieve(rect));
+
+            //if pRect does not fit into a subnode, check it against all subnodes
+        } else {
+            for (var i = 0; i < this.nodes.length; i = i + 1) {
+                returnObjects = returnObjects.concat(this.nodes[i].retrieve(rect));
+            }
+        }
+    }
+
+    return returnObjects;
+};
