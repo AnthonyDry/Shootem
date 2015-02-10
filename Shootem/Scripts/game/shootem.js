@@ -74,13 +74,16 @@ function GameController(canvasWidth, canvasHeight, signalR) {
         //
         // update the game model
         //
+        quad.clear();
         _model.update(gameTime, _signalR);
 
         //
         // write out the gamemodel 
         //
         _view.draw(_context, _canvas, _model);
-        
+
+        //drawQuadTree(quad, _context);
+
         //
         // set last time
         //
@@ -104,7 +107,8 @@ function GameController(canvasWidth, canvasHeight, signalR) {
         var sprites = { "player": { "type": "character", "sprite": loader.loadImage("content/images/player/guy.png")  }};
         _model = new GameModel();
         _view = new GameView(sprites, _model, _canvasWidth, _canvasHeight);
-
+        
+        
 
     };
 
@@ -118,6 +122,17 @@ function GameController(canvasWidth, canvasHeight, signalR) {
 //
 function GameModel() {
     var _playerModel = new PlayerModel(playerClass.INFANTRY);
+    var _list = [];
+
+
+    for (var i = 0; i < 10; i++) {
+        _list.push(new ZombieModel(0, 0));
+    }
+
+    for (var i = 0; i < 10; i++) {
+        _list.push(new ZombieModel(10, 8));
+    }
+
     var _level = new Level();
 
     //
@@ -125,6 +140,11 @@ function GameModel() {
     //
     this.update = function (gameTime, signalR) {
         _playerModel.update(gameTime);
+        quad.insert(_playerModel.rectangle());
+
+        _list.forEach(function (obj) {
+            quad.insert(obj.rectangle());
+        });
     };
 
     this.getLevel = function () {
@@ -137,6 +157,10 @@ function GameModel() {
     this.getPlayerModel = function () {
         return _playerModel;
     };
+
+    this.getZombies = function () {
+        return _list;
+    }; 
 
     //
     // Move player
@@ -165,11 +189,22 @@ function GameView(spriteBatch, gameModel, canvasWidth, canvasHeight) {
     var _scrollSpeed = 4; // 4 tiles per sec
 
     var _camera = new GameCamera(canvasWidth, canvasHeight, _gameModel.getLevel().width(), _gameModel.getLevel().height());
+    quad = new QuadTree(0, new Rectangle(0, 0, _canvasWidth, _canvasHeight), _camera);
     var _playerView = new PlayerView(spriteBatch.player);
+    var _zombieView = new ZombieView(spriteBatch.player);
 
     this.draw = function (context, canvas, gameModel) {
         context.clearRect(0, 0, canvas.width, canvas.height);
         _playerView.draw(context, gameModel.getPlayerModel(), _camera);
+
+        var zombies = gameModel.getZombies();
+
+        for (var i = 0; i < zombies.length; i++) {
+            _zombieView.draw(context, zombies[i], _camera);
+        }
+        
+
+
     };
 
     this.checkScrollScreen = function (gameTime) {
@@ -199,6 +234,8 @@ function GameView(spriteBatch, gameModel, canvasWidth, canvasHeight) {
         //
         if (mouse.y > (_canvasHeight - hoverBorderY) && _camera.getDiff().diffY < 18)
             _camera.setDiff(0, diff);
+
+        quad.setCamera(_camera);
         
     };
 
@@ -226,6 +263,8 @@ function GameView(spriteBatch, gameModel, canvasWidth, canvasHeight) {
 function GameCamera(canvasWidth, canvasHeight, maxLogicalCoordinateX, maxLogicalCoordinateY) {
     var _scaleX = canvasWidth / maxLogicalCoordinateX;
     var _scaleY = canvasHeight / maxLogicalCoordinateY;
+    var _screenWidth = canvasWidth;
+    var _screenHeight = canvasHeight;
 
     var _diffX = 0;
     var _diffY = 0;
@@ -233,7 +272,6 @@ function GameCamera(canvasWidth, canvasHeight, maxLogicalCoordinateX, maxLogical
     this.getVisualPositions = function (x, y) {
         x = x - _diffX;
         y = y - _diffY;
-        console.log(_diffX);
         return { X: (x * (_scaleX)), Y: (y * (_scaleY)) };
         
     };
@@ -253,7 +291,6 @@ function GameCamera(canvasWidth, canvasHeight, maxLogicalCoordinateX, maxLogical
     this.getVisualRectangle = function (x, y, logicalWidthRadius, logicalHeightRadius) {
         var visualWidth = (logicalWidthRadius * _scaleX) * 2;
         var visualHeight = (logicalHeightRadius * _scaleY) * 2;
-
         var visualPosition = this.getVisualPositions(x, y);
         return { x: visualPosition.X, y: visualPosition.Y, width: visualWidth, height: visualHeight };
     };
@@ -269,6 +306,10 @@ function GameCamera(canvasWidth, canvasHeight, maxLogicalCoordinateX, maxLogical
         _diffX += modelXDiff;
         _diffY += modelYDiff;
     };
+
+    this.getScreenSize = function () {
+        return { width: _screenWidth, height: _screenHeight };
+    }
 
 }
 

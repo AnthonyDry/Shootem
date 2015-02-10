@@ -9,14 +9,25 @@ function Rectangle(x, y, width, height) {
     this.height = height;
 }
 
-function QuadTree(level, bounds) {
+//
+// QuadTree
+//
+function QuadTree(level, bounds, camera) {
+    var quadTree = this;
     this.MAX_LEVEL = 5;
-    this.MAX_OBJECTS = 10;
+    this.MAX_OBJECTS = 5;
 
-    this._level = level;
+
+    this.level = level;
     this.objects = [];
     this.nodes = [];
-    this._bounds = bounds;    
+    this.bounds = bounds;    
+
+    this.camera = camera;
+
+    this.setCamera = function(camera){
+        quadTree.camera = camera;
+    }
 }
 
 //
@@ -46,10 +57,10 @@ QuadTree.prototype.split = function () {
 
     var nextLevel = this.level + 1;
  
-    this.nodes[0] = new Quadtree(nextLevel, new Rectangle(x + subWidth, y, subWidth, subHeight));
-    this.nodes[1] = new Quadtree(nextLevel, new Rectangle(x, y, subWidth, subHeight));
-    this.nodes[2] = new Quadtree(nextLevel, new Rectangle(x, y + subHeight, subWidth, subHeight));
-    this.nodes[3] = new Quadtree(nextLevel, new Rectangle(x + subWidth, y + subHeight, subWidth, subHeight));
+    this.nodes[0] = new QuadTree(nextLevel, new Rectangle(x + subWidth, y, subWidth, subHeight), this.camera);
+    this.nodes[1] = new QuadTree(nextLevel, new Rectangle(x, y, subWidth, subHeight), this.camera);
+    this.nodes[2] = new QuadTree(nextLevel, new Rectangle(x, y + subHeight, subWidth, subHeight), this.camera);
+    this.nodes[3] = new QuadTree(nextLevel, new Rectangle(x + subWidth, y + subHeight, subWidth, subHeight), this.camera);
 };
 
 /*
@@ -95,19 +106,28 @@ QuadTree.prototype.getIndex = function (rect) {
  * objects to their corresponding nodes.
  */
 QuadTree.prototype.insert = function (rect) {
+    
+    rect = this.camera.getVisualRectangle(rect.x, rect.y, rect.width, rect.height);
+    
+
+    if (rect.x >= 0 && rect.y >= 0 && rect.x <= this.camera.getScreenSize().width && rect.y <= this.camera.getScreenSize().height)
+        this.helperInsert(rect);
+};
+
+QuadTree.prototype.helperInsert = function (rect) {
     //if we have subnodes ...
     if (typeof this.nodes[0] !== 'undefined') {
         index = this.getIndex(rect);
 
         if (index !== -1) {
-            this.nodes[index].insert(rect);
+            this.nodes[index].helperInsert(rect);
             return;
         }
     }
 
     this.objects.push(rect);
 
-    if (this.objects.length > this.MAX_OBJECTS && this.level < this.MAX_LEVELS) {
+    if (this.objects.length > this.MAX_OBJECTS && this.level < this.MAX_LEVEL) {
         //split if we don't already have subnodes
         if (typeof this.nodes[0] === 'undefined') {
             this.split();
@@ -116,9 +136,9 @@ QuadTree.prototype.insert = function (rect) {
         var i = 0;
         var index;
         while (i < this.objects.length) {
-            index = getIndex(this.objects[i]);
+            index = this.getIndex(this.objects[i]);
             if (index !== -1) {
-                this.nodes[index].insert(this.objects.splice(i, 1)[0]);
+                this.nodes[index].helperInsert(this.objects.splice(i, 1)[0]);
             }
             else {
                 i++;
@@ -136,17 +156,37 @@ QuadTree.prototype.retrieve = function (rect) {
     //if we have subnodes ...
     if (typeof this.nodes[0] !== 'undefined') {
 
-        //if pRect fits into a subnode ..
+        //if rect fits into a subnode ..
         if (index !== -1) {
             returnObjects = returnObjects.concat(this.nodes[index].retrieve(rect));
 
-            //if pRect does not fit into a subnode, check it against all subnodes
+            //if rect does not fit into a subnode, check it against all subnodes
         } else {
             for (var i = 0; i < this.nodes.length; i = i + 1) {
                 returnObjects = returnObjects.concat(this.nodes[i].retrieve(rect));
             }
         }
     }
-
     return returnObjects;
+};
+
+/*
+ * draw Quadtree nodes
+ */
+var drawQuadTree = function (node, context) {
+    if (typeof node !== "undefined") {
+        var bounds = node.bounds;
+
+        //no subnodes? draw the current node
+        if (node.nodes.length === 0) {
+            context.strokeStyle = 'rgba(255,0,0,0.2)';
+            context.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+
+            //has subnodes? drawQuadtree them!
+        } else {
+            for (var i = 0; i < node.nodes.length; i = i + 1) {
+                drawQuadTree(node.nodes[i], context);
+            }
+        }
+    }
 };

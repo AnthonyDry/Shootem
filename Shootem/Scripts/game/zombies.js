@@ -1,8 +1,7 @@
 ﻿
-function PlayerModel(classType) {
+function ZombieModel(x, y) {
     var _hp = 100;
-    var _positionX = 4, _positionY = 0;
-    var _classType = classType;
+    var _positionX = x, _positionY = y;
     var _isAttacking, _attackType;
     var _radiusWidth = 0.5;
     var _radiusHeight = 0.5;
@@ -43,9 +42,6 @@ function PlayerModel(classType) {
 
             }
 
-            
-           
-
             var _speedX = _movingSpeed;
             var _speedY = _movingSpeed;
 
@@ -67,7 +63,7 @@ function PlayerModel(classType) {
                 _positionY -= _speedY * gameTime;
 
             _lastDistanceX = distanceX;
-            _lastDistanceY= distanceY;
+            _lastDistanceY = distanceY;
         }
 
     };
@@ -86,12 +82,12 @@ function PlayerModel(classType) {
 
         if (x - _radiusWidth !== _lastMovingPositionX)
             _movingPositionX = x - _radiusWidth;
-        if(y - _radiusHeight !== _lastMovingPositionY)
+        if (y - _radiusHeight !== _lastMovingPositionY)
             _movingPositionY = y - _radiusHeight;
     };
 
-    this.getLogicalPosition = function() {
-        return {x: _positionX, y: _positionY };
+    this.getLogicalPosition = function () {
+        return { x: _positionX, y: _positionY };
     };
 
     this.getRadiusSize = function () {
@@ -99,10 +95,10 @@ function PlayerModel(classType) {
     };
 }
 
-function PlayerView(spriteBatch) {
+function ZombieView(spriteBatch) {
     var _spriteBatch = spriteBatch;
     this.draw = function (context, playerModel, camera) {;
-        var rectangle; 
+        var rectangle;
         switch (_spriteBatch.type) {
             case "character":
                 var playerPosition = playerModel.getLogicalPosition();
